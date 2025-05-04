@@ -1,0 +1,44 @@
+# --- Global ignores ---
+.env
+*.pyc
+__pycache__/
+.DS_Store
+*.log
+db/
+
+# --- FastAPI Backend ---
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/db/
+
+# Optional: exclude ChromaDB files if saved
+backend/chromadb.db/
+backend/chroma/
+
+# --- React Native Frontend ---
+frontend/node_modules/
+frontend/.expo/
+frontend/.expo-shared/
+frontend/android/app/build/
+frontend/ios/Pods/
+frontend/ios/Podfile.lock
+frontend/ios/build/
+frontend/*.log
+
+# React Native cache files
+frontend/.gradle/
+frontend/.idea/
+frontend/.vscode/
+frontend/.watchmanconfig
+frontend/.bundle/
+frontend/babel.config.js
+frontend/metro.config.js
+frontend/yarn.lock
+frontend/package-lock.json
+
+# macOS system files
+frontend/.DS_Store
+
+# --- Python Bytecode ---
+*.py[cod]
