@@ -17,7 +17,7 @@ export default function App() {
 
   const handleSend = async () => {
     try {
-      const res = await fetch('http://192.168.100.38:8000/ask', {
+      const res = await fetch('http://0.0.0.0:8000/ask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

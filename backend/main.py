@@ -22,9 +22,46 @@ app.add_middleware(
 )
 
 client = chromadb.PersistentClient(path="db")
-collection = client.get_collection("visa_documents")
-
+collection = client.get_or_create_collection("visa_documents")
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
+def chunk_documents(doc, chunk_size=500):
+    chunks = []
+    for i in range(0, len(doc), chunk_size):
+        chunks.append(doc[i:i + chunk_size])
+    return chunks
+
+def add_chunks_to_db(chunks, collection_name):
+    embeddings = embedder.encode(chunks)
+    for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+        collection.add(
+            documents=[chunk],
+            metadatas=[{"source": collection_name}],
+            ids=[f"{collection_name}_chunk_{idx}"],
+            embeddings=[embedding]
+        )
+
+def process_and_store_files():
+    existing_ids = collection.get()["ids"]
+    if any("visa_spain" in id for id in existing_ids) and any("visa_albania" in id for id in existing_ids):
+        print("Data already exists in ChromaDB. Skipping processing.")
+        return
+
+    with open("data/visa_spain_dnv.txt", "r") as file:
+        spain_doc = file.read()
+    spain_chunks = chunk_documents(spain_doc)
+    add_chunks_to_db(spain_chunks, "visa_spain")
+
+    with open("data/visa_albania_residency.txt", "r") as file:
+        albania_doc = file.read()
+    albania_chunks = chunk_documents(albania_doc)
+    add_chunks_to_db(albania_chunks, "visa_albania")
+
+    print("Chunks have been successfully added to ChromaDB.")
+
+@app.on_event("startup")
+async def startup_event():
+    process_and_store_files()
 
 class Query(BaseModel):
     question: str
@@ -32,9 +69,7 @@ class Query(BaseModel):
 @app.post("/ask")
 async def answer_question(query: Query):
     user_question = query.question
-
     query_embedding = embedder.encode(user_question).tolist()
-
     results = collection.query(query_embeddings=[query_embedding], n_results=3)
     context_chunks = results["documents"][0]
     distances = results["distances"][0]
@@ -56,17 +91,9 @@ Question: {user_question}
 Give a precise answer:"""
 
     url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={API_KEY}"
-    headers = {
-        "Content-Type": "application/json"
-    }
+    headers = {"Content-Type": "application/json"}
     data = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt}
-                ]
-            }
-        ]
+        "contents": [{"parts": [{"text": prompt}]}]
     }
 
     response = requests.post(url, headers=headers, json=data)
